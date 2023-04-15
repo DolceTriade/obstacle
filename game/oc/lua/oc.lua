@@ -57,10 +57,11 @@ end
 
 function WelcomeClient(ent, connect)
     if not connect then
+        players[ent.client.guid] = nil
         return
     end
-    txt = 'Welcome to the Unvanquished Obstacle course server!'
-    CP(ent, txt)
+    txt = 'Welcome to the Unvanquished Obstacle course server! Type !help for help.'
+    SayCP(ent, txt)
 end
 
 function HandleTeamChange(ent, team)
@@ -71,7 +72,8 @@ function HandleTeamChange(ent, team)
         players[ent.client.guid] = nil
         return
     end
-    players[ent.client.guid] = { ["checkpoint"] = nil, ["start"] = sgame.level.time }
+    Cmd.exec('denybuild ' .. ent.number)
+    players[ent.client.guid] = { ["checkpoint"] = nil,["start"] = sgame.level.time }
 end
 
 function HandlePlayerSpawn(ent)
@@ -177,9 +179,9 @@ function PrintHighScores(ent)
 end
 
 COMMANDS = {
-    ["help"]=PrintHelp,
-    ["time"]=PrintTime,
-    ["highscores"]=PrintHighScores,
+    ["help"] = PrintHelp,
+    ["time"] = PrintTime,
+    ["highscores"] = PrintHighScores,
 }
 
 
@@ -192,7 +194,11 @@ function SaveCheckpoint(self, caller, activator)
     if p == nil then
         return
     end
+    if SameEnt(p["checkpoint"], self) then
+        return
+    end
     p["checkpoint"] = self
+    SayCP(caller, 'Reached checkpoint!')
 end
 
 function mb(v)
@@ -208,7 +214,7 @@ function ParseHighScores(m)
     local oldIdx = 1
     while true do
         idx = m:find('\\\\', oldIdx)
-        if idx == nil or oldIdx == idx then
+        if idx == nil then
             s = m:sub(oldIdx)
             if #s == 0 then
                 break
@@ -216,13 +222,12 @@ function ParseHighScores(m)
             table.insert(args, s)
             break
         end
-        table.insert(args, m:sub(oldIdx, idx-1))
+        table.insert(args, m:sub(oldIdx, idx - 1))
         oldIdx = idx + 2
     end
     local t = {}
     for i = 1, #args, 2 do
-
-        table.insert(t, {name=args[i], time=tonumber(args[i+1])})
+        table.insert(t, { name = args[i], time = tonumber(args[i + 1]) })
     end
     return t
 end
@@ -247,28 +252,29 @@ function Victory(self, caller, activator)
     SayCP(nil, ClientName(caller) .. ' finished the level in: ' .. HumanTime(diff))
     local highscores = Cvar.get(highscore_cvar)
     local t = ParseHighScores(highscores)
+    print(t)
+    print(#t)
     if #t == 0 then
-        table.insert(t, {name=ClientName(caller), time=diff})
+        table.insert(t, { name = ClientName(caller), time = diff })
     else
         if t[#t].time > diff or #t < MAX_SCORES then
             local insert = false
             for i, v in ipairs(t) do
                 if v.time > diff then
-                    table.insert(t, i, {name=ClientName(caller), time=diff})
+                    table.insert(t, i, { name = ClientName(caller), time = diff })
                     insert = true
                     break
                 end
             end
             if not insert and #t < MAX_SCORES then
-                table.insert(t, {name=ClientName(caller), time=diff})
+                table.insert(t, { name = ClientName(caller), time = diff })
             end
             if #t > MAX_SCORES then
                 t[#t] = nil
             end
         end
-
     end
-    Cvar.set(highscore_cvar, s)
+    Cvar.set(highscore_cvar, SerializeHighScores(t))
     Cvar.archive(highscore_cvar)
     p["checkpoint"] = nil
     p["start"] = sgame.level.time
@@ -276,19 +282,24 @@ function Victory(self, caller, activator)
 end
 
 function init()
+    print('OMG Lua...')
     sgame.hooks.RegisterClientConnectHook(WelcomeClient)
     sgame.hooks.RegisterTeamChangeHook(HandleTeamChange)
     sgame.hooks.RegisterChatHook(ExecChatCommand)
     sgame.hooks.RegisterPlayerSpawnHook(HandlePlayerSpawn)
-    local cps = { Entity.iterate_classname('team_human_medistat') }
-    for _, e in ipairs(cps) do
-        e.touch = SaveCheckpoint
-    end
-    local rc = Entity.iterate_classname('team_human_reactor')
-    rc.touch = Victory
+    print(sgame.level.time)
+    Timer.add(300, function()
+        print(sgame.level.time)
+        local cps = { sgame.entity.iterate_classname('team_human_medistat') }
+        for _, e in ipairs(cps) do
+            e.touch = SaveCheckpoint
+        end
+        local rc = sgame.entity.iterate_classname('team_human_reactor')
+        rc.touch = Victory
 
-    LockAliens()
-    print('Loaded lua...')
+        LockAliens()
+        print('Loaded lua...')
+    end)
 end
 
 init()
