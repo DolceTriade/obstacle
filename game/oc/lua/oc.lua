@@ -57,7 +57,6 @@ end
 
 function WelcomeClient(ent, connect)
     if not connect then
-        players[ent.client.guid] = nil
         return
     end
     txt = 'Welcome to the Unvanquished Obstacle course server! Type !help for help.'
@@ -260,8 +259,6 @@ function Victory(self, caller, activator)
     SayCP(nil, ClientName(caller) .. ' finished the level in: ' .. HumanTime(diff))
     local highscores = Cvar.get(highscore_cvar)
     local t = ParseHighScores(highscores)
-    print(t)
-    print(#t)
     if #t == 0 then
         table.insert(t, { name = ClientName(caller), time = diff })
     else
@@ -283,21 +280,19 @@ function Victory(self, caller, activator)
         end
     end
     Cvar.set(highscore_cvar, SerializeHighScores(t))
-    Cvar.archive(highscore_cvar)
+    Cmd.exec('writeconfig autogen.cfg')
     p["checkpoint"] = nil
     p["start"] = sgame.level.time
     caller.client:kill()
 end
 
 function init()
-    print('OMG Lua...')
     sgame.hooks.RegisterClientConnectHook(WelcomeClient)
     sgame.hooks.RegisterTeamChangeHook(HandleTeamChange)
     sgame.hooks.RegisterChatHook(ExecChatCommand)
     sgame.hooks.RegisterPlayerSpawnHook(HandlePlayerSpawn)
-    print(sgame.level.time)
+    -- Buildables actually spawn after a few frames, so delay until then.
     Timer.add(300, function()
-        print(sgame.level.time)
         local cps = { sgame.entity.iterate_classname('team_human_medistat') }
         for _, e in ipairs(cps) do
             e.touch = SaveCheckpoint
