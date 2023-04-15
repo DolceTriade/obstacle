@@ -124,8 +124,9 @@ end
 
 function PrintHelp(ent)
     Say(ent, [=[Welcome to the Obstacle Course mod!
-Touch the RC to win!
-List of commands: !help !time !highscores']=])
+Touch the RC to win! Medistations are checkpoints.
+Use !highscores to see the high scores.
+List of commands: !help !time !highscores !kill']=])
 end
 
 function HumanTime(time)
@@ -178,12 +179,19 @@ function PrintHighScores(ent)
     Say(ent, s)
 end
 
+function Kill(ent)
+    if ent == nil or ent.client == nil then
+        return
+    end
+    ent.client:kill()
+end
+
 COMMANDS = {
     ["help"] = PrintHelp,
     ["time"] = PrintTime,
     ["highscores"] = PrintHighScores,
+    ["kill"] = Kill
 }
-
 
 
 function SaveCheckpoint(self, caller, activator)
